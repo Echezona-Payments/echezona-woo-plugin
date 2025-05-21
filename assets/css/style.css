@@ -1,0 +1,88 @@
+.echezona-payment-button {
+    margin: 20px 0;
+    text-align: center;
+}
+
+.echezona-payment-button button {
+    background-color: #2271b1;
+    border-color: #2271b1;
+    color: #fff;
+    padding: 10px 20px;
+    font-size: 16px;
+    line-height: 1.5;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.echezona-payment-button button:hover {
+    background-color: #135e96;
+    border-color: #135e96;
+}
+
+.echezona-payment-button button:disabled {
+    background-color: #ccc;
+    border-color: #ccc;
+    cursor: not-allowed;
+}
+
+/* Block styles */
+.wc-block-components-payment-method-icons {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.wc-block-components-payment-method-icons img {
+    max-height: 24px;
+    width: auto;
+}
+
+.wc-block-components-payment-method-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.wc-block-components-payment-method-label img {
+    max-height: 24px;
+    width: auto;
+}
+
+/* Error message styling */
+.woocommerce-error {
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+    padding: 12px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    list-style: none;
+}
+
+/* Loading state */
+.echezona-payment-button button.loading {
+    position: relative;
+    color: transparent;
+}
+
+.echezona-payment-button button.loading::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid #fff;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: echezona-spinner 0.6s linear infinite;
+}
+
+@keyframes echezona-spinner {
+    to {
+        transform: rotate(360deg);
+    }
+} 
