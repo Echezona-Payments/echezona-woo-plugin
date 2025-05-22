@@ -207,7 +207,7 @@ class WC_ECZP_Gateway extends WC_Payment_Gateway
                 'description' => __('Place the payment gateway in test mode.', 'echezona-payments'),
             ),
             'api_key' => array(
-                'title' => __('Live API Key', 'echezona-payments'),
+                'title' => __('API Key', 'echezona-payments'),
                 'type' => 'text',
                 'description' => __('Enter your API key', 'echezona-payments'),
                 'default' => '',
@@ -352,7 +352,7 @@ class WC_ECZP_Gateway extends WC_Payment_Gateway
             ],
             'productId' => (string)$order->get_id(),
             'producDescription' => 'Payment with Echezona payment gateway for WooCommerce order',
-            'applyConviniencyCharge' => false 
+            'applyConviniencyCharge' => false
         );
 
         error_log('Echezona API Request - Body: ' . json_encode($request_body));
@@ -397,7 +397,11 @@ class WC_ECZP_Gateway extends WC_Payment_Gateway
             ));
         }
 
-        $prod_url = $body['data']['paymentUrl']."?iframe=1";
+        // store the access code on the order details
+        $order->update_meta_data('_echezona_access_code', $body['data']['accessCode']);
+        $order->save();
+
+        $prod_url = $body['data']['paymentUrl'] . "?iframe=1";
         // $staging_url = "https://checkout.staging.echezona.com/".$body['data']['accessCode']."?iframe=1";
 
         return $prod_url;
@@ -467,32 +471,39 @@ class WC_ECZP_Gateway extends WC_Payment_Gateway
 
     public function check_eczp_response()
     {
-        $reference = isset($_GET['reference']) ? sanitize_text_field($_GET['reference']) : '';
-        $status = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '';
+        $reference = isset($_GET['orderReference']) ? sanitize_text_field($_GET['orderReference']) : '';
+        $responseCode = isset($_GET['responseCode']) ? sanitize_text_field($_GET['responseCode']) : '';
 
-        if (empty($reference) || empty($status)) {
+        if ($responseCode !== '00') {
             wp_die(__('Invalid callback parameters', 'echezona-payments'));
         }
 
-        // Extract order ID from reference
-        $reference_parts = explode('_', $reference);
-        if (count($reference_parts) < 2) {
-            wp_die(__('Invalid reference format', 'echezona-payments'));
-        }
-
-        $order_id = $reference_parts[1];
+        $order_id = isset($_GET['order_id']) ? sanitize_text_field($_GET['order_id']) : '';;
         $order = wc_get_order($order_id);
 
         if (!$order) {
             wp_die(__('Order not found', 'echezona-payments'));
         }
 
-        $response = wp_remote_post($this->base_url . '/Payments/ValidatePayment', array(
+        //  fetch the payment information
+        $access_code = $order->get_meta('_echezona_access_code');
+        $payment_info_response = wp_remote_get($this->base_url . "/Payments/GetPaymentInfo/" . $access_code);
+        $payment_info_response_body = json_decode(wp_remote_retrieve_body($payment_info_response), true);
+
+        // get the payment validation token
+        $payment_validation_token = $payment_info_response_body['data']['token'];
+
+        // extract transaction id from order meta
+        $transaction_id = $order->get_meta('_echezona_transaction_id');
+
+        $response = wp_remote_post($this->base_url . '/Payments/VerifyPayment?caller=merchant', array(
             'headers' => array(
-                'Authorization' => 'Bearer ' . $this->api_key,
+                'Authorization' => 'Bearer ' . $payment_validation_token,
                 'Content-Type' => 'application/json',
             ),
-            'body' => json_encode(['transaction_id' => $reference])
+            'body' => json_encode([
+                'transactionId' => (string)$transaction_id
+            ]),
         ));
 
         if (is_wp_error($response)) {
@@ -501,15 +512,16 @@ class WC_ECZP_Gateway extends WC_Payment_Gateway
 
         $body = json_decode(wp_remote_retrieve_body($response), true);
 
-        if (isset($body['responseCode']) && $body['responseCode'] === '00') {
+        if (isset($body['responseCode']) && $body['responseCode'] === '04') {
             // Payment successful
             $order->payment_complete();
-            $order->add_order_note(sprintf(__('Payment completed via Echezona. Reference: %s', 'echezona-payments'), $reference));
+            $order->add_order_note(sprintf(__('Payment completed via Echezona. Reference: %s', 'echezona-payments'), $transaction_id));
+            if($this->autocomplete_order === 'yes') $order->update_status('completed');
             wp_redirect($this->get_return_url($order));
             exit;
         } else {
             // Payment failed
-            $order->update_status('failed', sprintf(__('Payment failed via Echezona. Reference: %s', 'echezona-payments'), $reference));
+            $order->update_status('failed', sprintf(__('Payment failed via Echezona. Reference: %s', 'echezona-payments'), $transaction_id));
             wp_redirect($order->get_checkout_payment_url());
             exit;
         }
