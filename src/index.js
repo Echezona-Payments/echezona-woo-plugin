@@ -1,27 +1,55 @@
-import { registerPaymentMethod } from "@woocommerce/blocks-registry";
-import { decodeEntities } from "@wordpress/html-entities";
-import { getSetting } from "@woocommerce/settings";
+import { decodeEntities } from '@wordpress/html-entities';
+import { registerBlockType } from '@wordpress/blocks';
+import { useEffect } from '@wordpress/element';
 
-const settings = getSetting("echezona_blocks_data", {});
-
-const EchezonaComponent = () => {
-  return decodeEntities(settings.description || "");
+const EchezonaPaymentContent = () => {
+    const settings = window?.echezonaPaymentData || {};
+    
+    return (
+        <div className="wc-block-components-payment-method-echezona">
+            {settings.icon && (
+                <img 
+                    src={settings.icon} 
+                    alt={decodeEntities(settings.title || '')}
+                    className="wc-block-components-payment-method-icon"
+                />
+            )}
+            <div className="wc-block-components-payment-method-label">
+                {decodeEntities(settings.title || '')}
+            </div>
+            <div className="wc-block-components-payment-method-description">
+                {decodeEntities(settings.description || '')}
+            </div>
+        </div>
+    );
 };
 
 const canMakePayment = () => {
-  return true;
+    return true;
 };
 
-const EchezonaPaymentMethod = {
-  name: "echezona_payment",
-  label: decodeEntities(settings.title || "Echezona Payment"),
-  content: <EchezonaComponent />,
-  edit: <EchezonaComponent />,
-  canMakePayment,
-  ariaLabel: "Echezona Payment",
-  supports: {
-    features: settings.supports || [],
-  },
+const paymentMethod = {
+    name: 'echezona_payment',
+    label: window?.echezonaPaymentData?.title || 'Echezona Payment',
+    content: <EchezonaPaymentContent />,
+    edit: <EchezonaPaymentContent />,
+    canMakePayment,
+    ariaLabel: window?.echezonaPaymentData?.title || 'Echezona Payment',
+    supports: {
+        features: window?.echezonaPaymentData?.supports || ['products']
+    },
 };
 
-registerPaymentMethod(EchezonaPaymentMethod);
+// Register the payment method with WooCommerce
+const registerPaymentMethod = () => {
+    if (window?.wc?.wcBlocksRegistry?.registerPaymentMethod) {
+        window.wc.wcBlocksRegistry.registerPaymentMethod(paymentMethod);
+    }
+};
+
+// Initialize on DOM load
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', registerPaymentMethod);
+} else {
+    registerPaymentMethod();
+}

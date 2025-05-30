@@ -24,7 +24,6 @@ class WC_ECZP_Blocks_Support implements IntegrationInterface
     public function __construct()
     {
         add_action('init', array($this, 'register_blocks_support'));
-        add_action('wp_enqueue_scripts', array($this, 'enqueue_scripts'));
     }
 
     /**
@@ -52,7 +51,7 @@ class WC_ECZP_Blocks_Support implements IntegrationInterface
      */
     public function get_script_handles()
     {
-        return array('echezona-blocks');
+        return array('echezona-payment-blocks');
     }
 
     /**
@@ -62,7 +61,7 @@ class WC_ECZP_Blocks_Support implements IntegrationInterface
      */
     public function get_editor_script_handles()
     {
-        return array('echezona-blocks');
+        return array('echezona-payment-blocks');
     }
 
     /**
@@ -72,7 +71,7 @@ class WC_ECZP_Blocks_Support implements IntegrationInterface
      */
     public function get_payment_method_script_handles_for_admin()
     {
-        return array('echezona-blocks');
+        return array('echezona-payment-blocks');
     }
 
     /**
@@ -82,7 +81,7 @@ class WC_ECZP_Blocks_Support implements IntegrationInterface
      */
     public function get_payment_method_script_handles()
     {
-        return array('echezona-blocks');
+        return array('echezona-payment-blocks');
     }
 
     /**
@@ -147,27 +146,4 @@ class WC_ECZP_Blocks_Support implements IntegrationInterface
         );
     }
 
-    /**
-     * Enqueue scripts.
-     */
-    public function enqueue_scripts()
-    {
-        if (!is_checkout() || !is_wc_endpoint_url('order-pay')) {
-            return;
-        }
-
-        wp_enqueue_script(
-            'echezona-blocks',
-            ECZP_PLUGIN_URL . 'assets/js/blocks.js',
-            array('wp-blocks', 'wp-element', 'wp-components', 'wp-i18n'),
-            ECZP_VERSION,
-            true
-        );
-
-        wp_localize_script(
-            'echezona-blocks',
-            'echezona_blocks_params',
-            $this->get_script_data()
-        );
-    }
 }

@@ -11,6 +11,49 @@ A WooCommerce payment gateway plugin for accepting payments via Echezona Payment
 - Webhook support for payment status updates
 - Support for multiple currencies
 
+## WordPress Blocks Support Implementation
+
+This plugin now includes full support for WooCommerce Blocks, allowing the payment method to be used with the new checkout block experience.
+
+### Implementation Overview
+
+1. **Build System Setup**
+   - Configured package.json with WordPress and React dependencies
+   - Set up webpack configuration to build JavaScript files
+   - Generated proper asset files for WordPress script registration
+
+2. **Block Support Implementation**
+   - Created EchezonaPaymentContent component in src/index.js
+   - Set up proper payment method registration with WooCommerce Blocks API
+   - Implemented data passing between PHP and JavaScript via localized script data
+
+3. **PHP Integration**
+   - Configured class-wc-eczp-blocks-payment-method.php for script registration
+   - Set up class-wc-eczp-blocks-support.php for WooCommerce Blocks integration
+   - Implemented proper data localization between server and client
+
+### Testing the Implementation
+
+1. Ensure the plugin is activated in WordPress
+2. Go to WooCommerce > Settings > Payments
+3. Enable Echezona Payment
+4. Create a new page with the WooCommerce Checkout block
+5. The payment method should appear in the checkout with proper styling
+
+### Development Workflow
+
+To make changes to the block implementation:
+
+1. Modify the JavaScript code in `src/index.js`
+2. Run `yarn build` to compile the changes
+3. Test in a WordPress environment with WooCommerce and WooCommerce Blocks enabled
+
+### Requirements
+
+- WordPress 5.9+
+- WooCommerce 6.0+
+- WooCommerce Blocks 7.0+
+
 ## Installation
 
 1. Download the plugin zip file
@@ -53,7 +96,7 @@ npm run test:unit
 
 ## Support
 
-For support, please contact hello@echezona.com or visit our [support portal](https://support.echezona.com).
+For support, please contact [admin support](hello@echezona.com) or visit our [support portal](https://support.echezona.com).
 
 ## License
 

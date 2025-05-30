@@ -1,13 +1,18 @@
-const defaultConfig = require("@wordpress/scripts/config/webpack.config");
-const WooCommerceDependencyExtractionWebpackPlugin = require("@woocommerce/dependency-extraction-webpack-plugin");
+const defaultConfig = require('@wordpress/scripts/config/webpack.config');
 
 module.exports = {
-  ...defaultConfig,
-  plugins: [
-    ...defaultConfig.plugins.filter(
-      (plugin) =>
-        plugin.constructor.name !== "DependencyExtractionWebpackPlugin"
-    ),
-    new WooCommerceDependencyExtractionWebpackPlugin(),
-  ],
+    ...defaultConfig,
+    entry: {
+        index: './src/index.js'
+    },
+    output: {
+        ...defaultConfig.output,
+        path: __dirname + '/build'
+    },
+    plugins: [
+        ...defaultConfig.plugins.filter(
+            (plugin) =>
+                plugin.constructor.name !== "DependencyExtractionWebpackPlugin"
+        )
+    ]
 };
