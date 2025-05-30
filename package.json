@@ -16,6 +16,7 @@
     "@wordpress/element": "^5.0.0",
     "@wordpress/html-entities": "^3.0.0",
     "@wordpress/i18n": "^4.0.0",
+    "ajv": "^8.17.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },

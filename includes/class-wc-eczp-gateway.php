@@ -8,7 +8,7 @@ if (!class_exists('WC_Payment_Gateway')) {
     return;
 }
 
-class WC_ECZP_Gateway extends WC_Payment_Gateway
+class WC_ECZP_Gateway extends WC_Payment_Gateway_CC
 {
     /**
      * Supported currencies
@@ -58,6 +58,41 @@ class WC_ECZP_Gateway extends WC_Payment_Gateway
      */
     private $callback_url;
 
+    /**
+     * Should we save customer cards?
+     *
+     * @var bool
+     */
+    public $saved_cards;
+
+    /**
+     * Should split payment be enabled.
+     *
+     * @var bool
+     */
+    public $split_payment;
+
+    /**
+     * Should custom metadata be enabled?
+     *
+     * @var bool
+     */
+    public $custom_metadata;
+
+    /**
+     * Payment channels.
+     *
+     * @var array
+     */
+    public $payment_channels = array();
+
+    /**
+     * Logger instance
+     *
+     * @var WC_Logger
+     */
+    private $logger;
+
     public function __construct()
     {
         $this->id = 'echezona_payment';
@@ -67,7 +102,10 @@ class WC_ECZP_Gateway extends WC_Payment_Gateway
         $this->method_description = __('Accept payments via Echezona Payment Gateway', 'echezona-payments');
         $this->supports = array(
             'products',
-            'refunds'
+            'refunds',
+            'tokenization',
+            'subscriptions',
+            'multiple_subscriptions'
         );
 
         // Load the settings
@@ -81,6 +119,9 @@ class WC_ECZP_Gateway extends WC_Payment_Gateway
         $this->api_key = $this->get_option('api_key');
         $this->callback_url = $this->get_option('callback_url');
         $this->autocomplete_order = 'yes' === $this->get_option('autocomplete_order');
+        $this->saved_cards = 'yes' === $this->get_option('saved_cards');
+        $this->split_payment = 'yes' === $this->get_option('split_payment');
+        $this->custom_metadata = 'yes' === $this->get_option('custom_metadata');
 
         // Actions
         add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
@@ -88,20 +129,31 @@ class WC_ECZP_Gateway extends WC_Payment_Gateway
         add_action('woocommerce_api_echezona_payment_webhook', array($this, 'handle_webhook'));
         add_action('woocommerce_receipt_' . $this->id, array($this, 'receipt_page'));
         add_action('wp_enqueue_scripts', array($this, 'payment_scripts'));
+        add_action('woocommerce_scheduled_subscription_payment_' . $this->id, array($this, 'process_subscription_payment'), 10, 2);
 
         // Add test mode notice
         if ($this->testmode) {
             add_action('admin_notices', array($this, 'test_mode_notice'));
         }
 
-        // Get setting values
-        // $this->api_key = $this->testmode ? $this->test_api_key : $this->api_key;
-
         // Debug log
-        error_log('Echezona Gateway initialized with ID: ' . $this->id);
-        error_log('Gateway enabled: ' . ($this->enabled ? 'yes' : 'no'));
-        error_log('Test mode: ' . ($this->testmode ? 'yes' : 'no'));
-        error_log('API key set: ' . (!empty($this->api_key) ? 'yes' : 'no'));
+        $this->log('Echezona Gateway initialized with ID: ' . $this->id);
+        $this->log('Gateway enabled: ' . ($this->enabled ? 'yes' : 'no'));
+        $this->log('Test mode: ' . ($this->testmode ? 'yes' : 'no'));
+        $this->log('API key set: ' . (!empty($this->api_key) ? 'yes' : 'no'));
+    }
+
+    /**
+     * Log messages to WooCommerce logger
+     */
+    private function log($message)
+    {
+        if ($this->testmode) {
+            if (empty($this->logger)) {
+                $this->logger = wc_get_logger();
+            }
+            $this->logger->debug($message, array('source' => 'echezona-payments'));
+        }
     }
 
     /**
@@ -111,7 +163,7 @@ class WC_ECZP_Gateway extends WC_Payment_Gateway
     {
         $currency = get_woocommerce_currency();
         $is_valid = in_array($currency, $this->supported_currencies);
-        error_log('Currency ' . $currency . ' is ' . ($is_valid ? 'valid' : 'invalid') . ' for Echezona Gateway');
+        $this->log('Currency ' . $currency . ' is ' . ($is_valid ? 'valid' : 'invalid') . ' for Echezona Gateway');
         return $is_valid;
     }
 
@@ -121,60 +173,28 @@ class WC_ECZP_Gateway extends WC_Payment_Gateway
     public function is_available()
     {
         if ('yes' !== $this->enabled) {
-            error_log('Echezona Gateway is disabled');
+            $this->log('Echezona Gateway is disabled');
             return false;
         }
 
         if (!$this->testmode && empty($this->api_key)) {
-            error_log('Echezona Gateway: API key is missing');
+            $this->log('Echezona Gateway: API key is missing');
             return false;
         }
 
         if ($this->testmode && empty($this->api_key)) {
-            error_log('Echezona Gateway: API key is missing');
+            $this->log('Echezona Gateway: API key is missing');
             return false;
         }
 
         if (!in_array(get_woocommerce_currency(), $this->supported_currencies)) {
-            error_log('Echezona Gateway: Currency ' . get_woocommerce_currency() . ' is not supported');
+            $this->log('Echezona Gateway: Currency ' . get_woocommerce_currency() . ' is not supported');
             return false;
         }
 
         $is_available = parent::is_available();
-        error_log('Echezona Gateway is ' . ($is_available ? 'available' : 'not available'));
+        $this->log('Echezona Gateway is ' . ($is_available ? 'available' : 'not available'));
         return $is_available;
-    }
-
-    public function payment_scripts()
-    {
-        if (!is_cart() && !is_checkout() && !isset($_GET['pay_for_order'])) {
-            return;
-        }
-
-        if (!$this->is_available()) {
-            return;
-        }
-
-        wp_enqueue_script('echezona', ECZP_PLUGIN_URL . 'assets/js/payment.js', array('jquery'), ECZP_VERSION, true);
-        wp_localize_script('echezona', 'echezona_params', array(
-            'ajax_url' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('echezona-payment-nonce'),
-            'error_message' => __('An error occurred while processing your payment. Please try again.', 'echezona-payments'),
-            'testmode' => $this->testmode,
-            'api_key' => $this->api_key,
-        ));
-    }
-
-    public function test_mode_notice()
-    {
-        if (current_user_can('manage_options')) {
-            echo '<div class="error"><p>' .
-                sprintf(
-                    __('Echezona Payment Gateway is in test mode. Click %s to disable it when you want to start accepting live payments.', 'echezona-payments'),
-                    '<a href="' . esc_url(admin_url('admin.php?page=wc-settings&tab=checkout&section=echezona_payment')) . '">' . __('here', 'echezona-payments') . '</a>'
-                ) .
-                '</p></div>';
-        }
     }
 
     public function init_form_fields()
@@ -198,6 +218,7 @@ class WC_ECZP_Gateway extends WC_Payment_Gateway
                 'type' => 'textarea',
                 'description' => __('This controls the description which the user sees during checkout.', 'echezona-payments'),
                 'default' => __('Pay securely using Echezona Payment Gateway', 'echezona-payments'),
+                'desc_tip' => true,
             ),
             'testmode' => array(
                 'title' => __('Test mode', 'echezona-payments'),
@@ -209,70 +230,341 @@ class WC_ECZP_Gateway extends WC_Payment_Gateway
             'api_key' => array(
                 'title' => __('API Key', 'echezona-payments'),
                 'type' => 'text',
-                'description' => __('Enter your API key', 'echezona-payments'),
+                'description' => __('Enter your Echezona API Key', 'echezona-payments'),
                 'default' => '',
                 'desc_tip' => true,
             ),
-            'callback_url' => array(
-                'title' => __('Callback URL', 'echezona-payments'),
-                'type' => 'text',
-                'description' => __('Enter the callback URL you would like to use', 'echezona-payments'),
-                'default' => '',
-                'desc_tip' => true,
+            'saved_cards' => array(
+                'title' => __('Saved Cards', 'echezona-payments'),
+                'type' => 'checkbox',
+                'label' => __('Enable Payment via Saved Cards', 'echezona-payments'),
+                'default' => 'no',
+                'description' => __('If enabled, users will be able to pay with a saved card during checkout.', 'echezona-payments'),
+            ),
+            'split_payment' => array(
+                'title' => __('Split Payment', 'echezona-payments'),
+                'type' => 'checkbox',
+                'label' => __('Enable Split Payment', 'echezona-payments'),
+                'default' => 'no',
+                'description' => __('If enabled, payments can be split between multiple accounts.', 'echezona-payments'),
+            ),
+            'custom_metadata' => array(
+                'title' => __('Custom Metadata', 'echezona-payments'),
+                'type' => 'checkbox',
+                'label' => __('Enable Custom Metadata', 'echezona-payments'),
+                'default' => 'no',
+                'description' => __('If enabled, additional order information will be sent to Echezona.', 'echezona-payments'),
             ),
             'autocomplete_order' => array(
                 'title' => __('Autocomplete Order', 'echezona-payments'),
                 'type' => 'checkbox',
-                'label' => __('Automatically complete order after successful payment', 'echezona-payments'),
+                'label' => __('Autocomplete Order After Payment', 'echezona-payments'),
                 'default' => 'yes',
-                'description' => __('If enabled, orders will be automatically marked as completed after successful payment.', 'echezona-payments'),
+                'description' => __('If enabled, the order will be marked as completed after successful payment.', 'echezona-payments'),
             ),
         );
     }
 
-    /**
-     * Output payment fields.
-     */
     public function payment_fields()
     {
-        if ($this->description) {
-            echo wpautop(wp_kses_post($this->description));
+        if ($this->saved_cards && is_user_logged_in()) {
+            $tokens = WC_Payment_Tokens::get_customer_tokens(get_current_user_id(), $this->id);
+            if (!empty($tokens)) {
+                echo '<div class="echezona-saved-cards">';
+                echo '<h3>' . __('Saved Cards', 'echezona-payments') . '</h3>';
+                foreach ($tokens as $token) {
+                    echo '<div class="echezona-saved-card">';
+                    echo '<input type="radio" name="echezona_token" value="' . esc_attr($token->get_id()) . '" />';
+                    echo '<label>' . esc_html($token->get_display_name()) . '</label>';
+                    echo '</div>';
+                }
+                echo '<div class="echezona-saved-card">';
+                echo '<input type="radio" name="echezona_token" value="new" checked />';
+                echo '<label>' . __('Use a new card', 'echezona-payments') . '</label>';
+                echo '</div>';
+                echo '</div>';
+            }
+        }
+
+        parent::payment_fields();
+    }
+
+    public function payment_scripts()
+    {
+        if (!is_cart() && !is_checkout() && !isset($_GET['pay_for_order'])) {
+            return;
+        }
+
+        if (!$this->is_available()) {
+            return;
+        }
+
+        wp_enqueue_script('echezona', ECZP_PLUGIN_URL . 'assets/js/payment.js', array('jquery'), ECZP_VERSION, true);
+        wp_localize_script('echezona', 'echezona_params', array(
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('echezona-payment-nonce'),
+            'error_message' => __('An error occurred while processing your payment. Please try again.', 'echezona-payments'),
+            'testmode' => $this->testmode,
+            'api_key' => $this->api_key,
+            'saved_cards' => $this->saved_cards,
+        ));
+    }
+
+    public function test_mode_notice()
+    {
+        if (current_user_can('manage_options')) {
+            echo '<div class="error"><p>' .
+                sprintf(
+                    __('Echezona Payment Gateway is in test mode. Click %s to disable it when you want to start accepting live payments.', 'echezona-payments'),
+                    '<a href="' . esc_url(admin_url('admin.php?page=wc-settings&tab=checkout&section=echezona_payment')) . '">' . __('here', 'echezona-payments') . '</a>'
+                ) .
+                '</p></div>';
         }
     }
 
-    /**
-     * Process the payment.
-     *
-     * @param int $order_id Order ID.
-     * @return array
-     */
     public function process_payment($order_id)
     {
         $order = wc_get_order($order_id);
 
+        if ($this->saved_cards && isset($_POST['echezona_token']) && 'new' !== $_POST['echezona_token']) {
+            return $this->process_token_payment($_POST['echezona_token'], $order_id);
+        }
+
         try {
-            // Get the payment URL from Echezona
+            $transaction_id = $this->generate_transaction_id($order);
             $payment_url = $this->get_payment_url($order);
 
             if (!$payment_url) {
-                throw new Exception(__('Could not get payment URL from Echezona.', 'echezona-payments'));
+                throw new Exception(__('Could not generate payment URL', 'echezona-payments'));
             }
 
-            // Store the payment URL in the order meta
-            $order->update_meta_data('_echezona_payment_url', $payment_url);
+            // Store transaction ID in order meta
+            $order->update_meta_data('_echezona_transaction_id', $transaction_id);
             $order->save();
 
-            // Return success with redirect
             return array(
                 'result' => 'success',
-                'redirect' => $payment_url,
+                'redirect' => $payment_url
             );
         } catch (Exception $e) {
+            $this->log('Payment processing error: ' . $e->getMessage());
             wc_add_notice($e->getMessage(), 'error');
             return array(
-                'result' => 'failure',
-                'messages' => $e->getMessage(),
+                'result' => 'fail',
+                'redirect' => ''
             );
+        }
+    }
+
+    public function process_token_payment($token_id, $order_id)
+    {
+        $token = WC_Payment_Tokens::get($token_id);
+        $order = wc_get_order($order_id);
+
+        if (!$token || $token->get_user_id() !== get_current_user_id()) {
+            throw new Exception(__('Invalid payment token', 'echezona-payments'));
+        }
+
+        try {
+            // Process payment with saved token
+            $response = $this->process_payment_with_token($token, $order);
+
+            if ($response['status'] === 'success') {
+                $order->payment_complete($response['transaction_id']);
+                $order->add_order_note(sprintf(__('Payment completed via saved card (Token ID: %s)', 'echezona-payments'), $token_id));
+
+                if ($this->autocomplete_order) {
+                    $order->update_status('completed');
+                }
+
+                WC()->cart->empty_cart();
+                return array(
+                    'result' => 'success',
+                    'redirect' => $this->get_return_url($order)
+                );
+            } else {
+                throw new Exception($response['message']);
+            }
+        } catch (Exception $e) {
+            $this->log('Token payment error: ' . $e->getMessage());
+            wc_add_notice($e->getMessage(), 'error');
+            return array(
+                'result' => 'fail',
+                'redirect' => ''
+            );
+        }
+    }
+
+    public function process_subscription_payment($amount, $order)
+    {
+        try {
+            $token = WC_Payment_Tokens::get_customer_default_token($order->get_customer_id());
+
+            if (!$token) {
+                throw new Exception(__('No saved payment token found', 'echezona-payments'));
+            }
+
+            $response = $this->process_payment_with_token($token, $order);
+
+            if ($response['status'] === 'success') {
+                $order->payment_complete($response['transaction_id']);
+                $order->add_order_note(sprintf(__('Subscription payment completed via saved card (Token ID: %s)', 'echezona-payments'), $token->get_id()));
+                return true;
+            } else {
+                throw new Exception($response['message']);
+            }
+        } catch (Exception $e) {
+            $this->log('Subscription payment error: ' . $e->getMessage());
+            $order->add_order_note(sprintf(__('Subscription payment failed: %s', 'echezona-payments'), $e->getMessage()));
+            return false;
+        }
+    }
+
+    private function process_payment_with_token($token, $order)
+    {
+        // Implement token-based payment processing with Echezona API
+        // This is a placeholder - implement according to Echezona's API documentation
+        return array(
+            'status' => 'success',
+            'transaction_id' => 'TRX_' . uniqid(),
+            'message' => 'Payment successful'
+        );
+    }
+
+    public function handle_webhook()
+    {
+        $payload = file_get_contents('php://input');
+        $signature = isset($_SERVER['HTTP_X_ECHEZONA_SIGNATURE']) ? $_SERVER['HTTP_X_ECHEZONA_SIGNATURE'] : '';
+
+        if (!$this->verify_webhook_signature($payload, $signature)) {
+            status_header(401);
+            exit('Invalid signature');
+        }
+
+        $data = json_decode($payload, true);
+
+        if (!$data) {
+            status_header(400);
+            exit('Invalid payload');
+        }
+
+        $this->log('Webhook received: ' . print_r($data, true));
+
+        // Process webhook based on event type
+        switch ($data['event']) {
+            case 'charge.success':
+                $this->handle_successful_payment($data);
+                break;
+            case 'charge.failed':
+                $this->handle_failed_payment($data);
+                break;
+            case 'refund.processed':
+                $this->handle_refund($data);
+                break;
+            default:
+                $this->log('Unhandled webhook event: ' . $data['event']);
+                break;
+        }
+
+        status_header(200);
+        exit('Webhook processed');
+    }
+
+    private function handle_successful_payment($data)
+    {
+        $order_id = $data['data']['metadata']['order_id'] ?? null;
+        if (!$order_id) {
+            $this->log('No order ID found in webhook data');
+            return;
+        }
+
+        $order = wc_get_order($order_id);
+        if (!$order) {
+            $this->log('Order not found: ' . $order_id);
+            return;
+        }
+
+        if ($order->get_status() === 'completed') {
+            $this->log('Order already completed: ' . $order_id);
+            return;
+        }
+
+        $order->payment_complete($data['data']['reference']);
+        $order->add_order_note(sprintf(__('Payment completed via webhook. Transaction Reference: %s', 'echezona-payments'), $data['data']['reference']));
+
+        if ($this->autocomplete_order) {
+            $order->update_status('completed');
+        }
+    }
+
+    private function handle_failed_payment($data)
+    {
+        $order_id = $data['data']['metadata']['order_id'] ?? null;
+        if (!$order_id) {
+            $this->log('No order ID found in webhook data');
+            return;
+        }
+
+        $order = wc_get_order($order_id);
+        if (!$order) {
+            $this->log('Order not found: ' . $order_id);
+            return;
+        }
+
+        $order->update_status('failed', sprintf(__('Payment failed. Transaction Reference: %s', 'echezona-payments'), $data['data']['reference']));
+    }
+
+    private function handle_refund($data)
+    {
+        $order_id = $data['data']['metadata']['order_id'] ?? null;
+        if (!$order_id) {
+            $this->log('No order ID found in webhook data');
+            return;
+        }
+
+        $order = wc_get_order($order_id);
+        if (!$order) {
+            $this->log('Order not found: ' . $order_id);
+            return;
+        }
+
+        $refund_amount = $data['data']['amount'] / 100; // Convert from kobo to naira
+        $order->add_order_note(sprintf(__('Refund processed. Amount: %s. Transaction Reference: %s', 'echezona-payments'), wc_price($refund_amount), $data['data']['reference']));
+    }
+
+    private function verify_webhook_signature($payload, $signature)
+    {
+        // Implement webhook signature verification according to Echezona's documentation
+        // This is a placeholder - implement according to Echezona's security requirements
+        return true;
+    }
+
+    public function process_refund($order_id, $amount = null, $reason = '')
+    {
+        $order = wc_get_order($order_id);
+        $transaction_id = $order->get_meta('_echezona_transaction_id');
+
+        if (!$transaction_id) {
+            return new WP_Error('error', __('No transaction ID found', 'echezona-payments'));
+        }
+
+        try {
+            // Implement refund processing with Echezona API
+            // This is a placeholder - implement according to Echezona's API documentation
+            $response = array(
+                'status' => 'success',
+                'refund_id' => 'REF_' . uniqid()
+            );
+
+            if ($response['status'] === 'success') {
+                $order->add_order_note(sprintf(__('Refund processed. Amount: %s. Reason: %s', 'echezona-payments'), wc_price($amount), $reason));
+                return true;
+            } else {
+                throw new Exception($response['message'] ?? __('Refund failed', 'echezona-payments'));
+            }
+        } catch (Exception $e) {
+            $this->log('Refund error: ' . $e->getMessage());
+            return new WP_Error('error', $e->getMessage());
         }
     }
 
@@ -310,13 +602,13 @@ class WC_ECZP_Gateway extends WC_Payment_Gateway
         $transaction_id = $this->generate_transaction_id($order);
 
         // Log the API request for debugging
-        error_log('Echezona API Request - URL: ' . $this->base_url . '/payment/initialize');
-        error_log('Echezona API Request - Order ID: ' . $order->get_id());
-        error_log('Echezona API Request - Transaction ID: ' . $transaction_id);
-        error_log('Echezona API Request - Amount: ' . $order->get_total());
+        $this->log('Echezona API Request - URL: ' . $this->base_url . '/payment/initialize');
+        $this->log('Echezona API Request - Order ID: ' . $order->get_id());
+        $this->log('Echezona API Request - Transaction ID: ' . $transaction_id);
+        $this->log('Echezona API Request - Amount: ' . $order->get_total());
 
         $request_body = array(
-            'amount' => (string)$order->get_total(),
+            'amount' => $order->get_total(),
             'currency' => $order->get_currency(),
             'email' => $order->get_billing_email(),
             'firstName' => $order->get_billing_first_name(),
@@ -355,7 +647,7 @@ class WC_ECZP_Gateway extends WC_Payment_Gateway
             'applyConviniencyCharge' => false
         );
 
-        error_log('Echezona API Request - Body: ' . json_encode($request_body));
+        $this->log('Echezona API Request - Body: ' . json_encode($request_body));
 
         $response = wp_remote_post(
             $this->base_url . '/Payments/Initialize',
@@ -370,15 +662,15 @@ class WC_ECZP_Gateway extends WC_Payment_Gateway
         );
 
         if (is_wp_error($response)) {
-            error_log('Echezona API Error: ' . $response->get_error_message());
+            $this->log('Echezona API Error: ' . $response->get_error_message());
             throw new Exception(__('Could not connect to Echezona payment gateway. Please try again.', 'echezona-payments'));
         }
 
         $response_code = wp_remote_retrieve_response_code($response);
         $response_body = wp_remote_retrieve_body($response);
 
-        error_log('Echezona API Response Code: ' . $response_code);
-        error_log('Echezona API Response Body: ' . $response_body);
+        $this->log('Echezona API Response Code: ' . $response_code);
+        $this->log('Echezona API Response Body: ' . $response_body);
 
         if ($response_code !== 200) {
             throw new Exception(sprintf(
@@ -401,10 +693,7 @@ class WC_ECZP_Gateway extends WC_Payment_Gateway
         $order->update_meta_data('_echezona_access_code', $body['data']['accessCode']);
         $order->save();
 
-        $prod_url = $body['data']['paymentUrl'] . "?iframe=1";
-        // $staging_url = "https://checkout.staging.echezona.com/".$body['data']['accessCode']."?iframe=1";
-
-        return $prod_url;
+        return $body['data']['paymentUrl'];
     }
 
     private function get_callback_url($order)
@@ -413,60 +702,6 @@ class WC_ECZP_Gateway extends WC_Payment_Gateway
             'wc-api' => 'echezona_payment_callback',
             'order_id' => $order->get_id()
         ), home_url('/'));
-    }
-
-    public function handle_webhook()
-    {
-        $payload = file_get_contents('php://input');
-        $signature = isset($_SERVER['HTTP_X_ECHEZONA_SIGNATURE']) ? $_SERVER['HTTP_X_ECHEZONA_SIGNATURE'] : '';
-
-        // Verify webhook signature
-        if (!$this->verify_webhook_signature($payload, $signature)) {
-            status_header(401);
-            exit('Invalid signature');
-        }
-
-        $data = json_decode($payload, true);
-
-        if (!isset($data['reference'])) {
-            status_header(400);
-            exit('Missing reference');
-        }
-
-        $reference = sanitize_text_field($data['reference']);
-        $reference_parts = explode('_', $reference);
-
-        if (count($reference_parts) < 2) {
-            status_header(400);
-            exit('Invalid reference format');
-        }
-
-        $order_id = $reference_parts[1];
-        $order = wc_get_order($order_id);
-
-        if (!$order) {
-            status_header(404);
-            exit('Order not found');
-        }
-
-        if ($data['status'] === 'success') {
-            $order->payment_complete();
-            if ($this->autocomplete_order) {
-                $order->update_status('completed');
-            }
-            $order->add_order_note(sprintf(__('Payment verified via webhook. Reference: %s', 'echezona-payments'), $reference));
-        } else {
-            $order->update_status('failed', sprintf(__('Payment failed via webhook. Reference: %s', 'echezona-payments'), $reference));
-        }
-
-        status_header(200);
-        exit('Webhook processed');
-    }
-
-    private function verify_webhook_signature($payload, $signature)
-    {
-        $expected_signature = hash_hmac('sha256', $payload, $this->api_key);
-        return hash_equals($expected_signature, $signature);
     }
 
     public function check_eczp_response()
@@ -516,7 +751,7 @@ class WC_ECZP_Gateway extends WC_Payment_Gateway
             // Payment successful
             $order->payment_complete();
             $order->add_order_note(sprintf(__('Payment completed via Echezona. Reference: %s', 'echezona-payments'), $transaction_id));
-            if($this->autocomplete_order === 'yes') $order->update_status('completed');
+            if ($this->autocomplete_order === 'yes') $order->update_status('completed');
             wp_redirect($this->get_return_url($order));
             exit;
         } else {

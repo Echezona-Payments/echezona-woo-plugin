@@ -4,146 +4,160 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-use Automattic\WooCommerce\Blocks\Integrations\IntegrationInterface;
+use Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType;
+use Automattic\WooCommerce\StoreApi\Payments\PaymentContext;
+use Automattic\WooCommerce\StoreApi\Payments\PaymentResult;
 
 /**
  * Echezona Blocks Support
  */
-class WC_ECZP_Blocks_Support implements IntegrationInterface
+final class WC_ECZP_Blocks_Support extends AbstractPaymentMethodType
 {
     /**
      * Payment method name/id/slug.
      *
      * @var string
      */
-    private $name = 'echezona_payment';
+    protected $name = 'echezona_payment';
 
     /**
-     * Initializes the class.
-     */
-    public function __construct()
-    {
-        add_action('init', array($this, 'register_blocks_support'));
-    }
-
-    /**
-     * The name of the integration.
+     * Log error message
      *
-     * @return string
+     * @param string $message Error message
+     * @param mixed  $data    Additional data to log
      */
-    public function get_name()
+    private function log_error($message, $data = null)
     {
-        return $this->name;
+        $log_message = '[Echezona Payment] ' . $message;
+        if ($data !== null) {
+            $log_message .= ' Data: ' . print_r($data, true);
+        }
+        error_log($log_message);
     }
 
     /**
-     * Initialize the integration.
+     * Initializes the payment method type.
      */
     public function initialize()
     {
-        $this->register_blocks_support();
+        try {
+            $this->log_error('Initializing payment method');
+            $this->settings = get_option('woocommerce_echezona_payment_settings', array());
+            $this->log_error('Settings loaded', $this->settings);
+            add_action('woocommerce_rest_checkout_process_payment_with_context', array($this, 'failed_payment_notice'), 8, 2);
+        } catch (Exception $e) {
+            $this->log_error('Error initializing payment method: ' . $e->getMessage());
+        }
     }
 
     /**
-     * Returns an array of script handles to enqueue in the frontend context.
-     *
-     * @return array
-     */
-    public function get_script_handles()
-    {
-        return array('echezona-payment-blocks');
-    }
-
-    /**
-     * Returns an array of script handles to enqueue in the editor context.
-     *
-     * @return array
-     */
-    public function get_editor_script_handles()
-    {
-        return array('echezona-payment-blocks');
-    }
-
-    /**
-     * Returns an array of script handles to enqueue in the admin context.
-     *
-     * @return array
-     */
-    public function get_payment_method_script_handles_for_admin()
-    {
-        return array('echezona-payment-blocks');
-    }
-
-    /**
-     * Returns an array of script handles to enqueue for the payment method.
-     *
-     * @return array
-     */
-    public function get_payment_method_script_handles()
-    {
-        return array('echezona-payment-blocks');
-    }
-
-    /**
-     * Returns an array of key, value pairs of data made available to the block on the client side.
-     *
-     * @return array
-     */
-    public function get_script_data()
-    {
-        return array(
-            'name' => $this->name,
-            'title' => __('Echezona Payment', 'echezona-payments'),
-            'description' => __('Pay securely using Echezona Payment Gateway', 'echezona-payments'),
-            'supports' => array('products'),
-            'icon' => ECZP_PLUGIN_URL . 'assets/images/logo.png',
-            'testmode' => 'yes' === get_option('woocommerce_echezona_payment_testmode', 'yes'),
-        );
-    }
-
-    /**
-     * Returns an array of key, value pairs of data made available to the payment method on the client side.
-     *
-     * @return array
-     */
-    public function get_payment_method_data()
-    {
-        return array(
-            'name' => $this->name,
-            'title' => __('Echezona Payment', 'echezona-payments'),
-            'description' => __('Pay securely using Echezona Payment Gateway', 'echezona-payments'),
-            'supports' => array('products'),
-            'icon' => ECZP_PLUGIN_URL . 'assets/images/logo.png',
-            'testmode' => 'yes' === get_option('woocommerce_echezona_payment_testmode', 'yes'),
-        );
-    }
-
-    /**
-     * Whether the integration is active or not.
+     * Returns if this payment method should be active. If false, the scripts will not be enqueued.
      *
      * @return boolean
      */
     public function is_active()
     {
-        return true;
+        try {
+            $payment_gateways_class = WC()->payment_gateways();
+            $payment_gateways = $payment_gateways_class->payment_gateways();
+            $is_active = isset($payment_gateways['echezona_payment']) && $payment_gateways['echezona_payment']->is_available();
+            $this->log_error('Payment method active status: ' . ($is_active ? 'true' : 'false'));
+            return $is_active;
+        } catch (Exception $e) {
+            $this->log_error('Error checking payment method active status: ' . $e->getMessage());
+            return false;
+        }
     }
 
     /**
-     * Register blocks support.
+     * Returns an array of scripts/handles to be registered for this payment method.
+     *
+     * @return array
      */
-    public function register_blocks_support()
+    public function get_payment_method_script_handles()
     {
-        if (!class_exists('Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType')) {
-            return;
-        }
+        try {
+            $script_asset_path = ECZP_PLUGIN_DIR . 'build/blocks.asset.php';
+            $this->log_error('Loading script asset from: ' . $script_asset_path);
 
-        require_once dirname(__FILE__) . '/class-wc-eczp-blocks-payment-method.php';
-        add_action(
-            'woocommerce_blocks_payment_method_type_registration',
-            function ($registry) {
-                $registry->register(new WC_ECZP_Blocks_Payment_Method());
+            $script_asset = file_exists($script_asset_path)
+                ? require $script_asset_path
+                : array(
+                    'dependencies' => array(),
+                    'version' => ECZP_VERSION,
+                );
+
+            $script_url = ECZP_PLUGIN_URL . 'build/blocks.js';
+            $this->log_error('Script URL: ' . $script_url);
+
+            wp_register_script(
+                'wc-echezona-blocks',
+                $script_url,
+                $script_asset['dependencies'],
+                $script_asset['version'],
+                true
+            );
+
+            if (function_exists('wp_set_script_translations')) {
+                wp_set_script_translations('wc-echezona-blocks', 'echezona-payments');
             }
-        );
+
+            return array('wc-echezona-blocks');
+        } catch (Exception $e) {
+            $this->log_error('Error registering payment method scripts: ' . $e->getMessage());
+            return array();
+        }
     }
 
+    /**
+     * Returns an array of key=>value pairs of data made available to the payment methods script.
+     *
+     * @return array
+     */
+    public function get_payment_method_data()
+    {
+        try {
+            $payment_gateways_class = WC()->payment_gateways();
+            $payment_gateways = $payment_gateways_class->payment_gateways();
+            $gateway = $payment_gateways['echezona_payment'];
+
+            $data = array(
+                'title' => $this->get_setting('title'),
+                'description' => $this->get_setting('description'),
+                'supports' => array_filter($gateway->supports, array($gateway, 'supports')),
+                'allow_saved_cards' => $gateway->saved_cards && is_user_logged_in(),
+                'testmode' => $gateway->testmode,
+                'api_key' => $gateway->api_key,
+                'logo_url' => ECZP_PLUGIN_URL . 'assets/images/logo.png',
+            );
+
+            $this->log_error('Payment method data', $data);
+            return $data;
+        } catch (Exception $e) {
+            $this->log_error('Error getting payment method data: ' . $e->getMessage());
+            return array();
+        }
+    }
+
+    /**
+     * Add failed payment notice to the payment details.
+     *
+     * @param PaymentContext $context Holds context for the payment.
+     * @param PaymentResult  $result  Result object for the payment.
+     */
+    public function failed_payment_notice(PaymentContext $context, PaymentResult &$result)
+    {
+        if ('echezona_payment' === $context->payment_method) {
+            $this->log_error('Processing failed payment notice');
+            add_action(
+                'wc_gateway_echezona_process_payment_error',
+                function ($failed_notice) use (&$result) {
+                    $this->log_error('Payment failed: ' . $failed_notice);
+                    $payment_details = $result->payment_details;
+                    $payment_details['errorMessage'] = wp_strip_all_tags($failed_notice);
+                    $result->set_payment_details($payment_details);
+                }
+            );
+        }
+    }
 }
