@@ -4,7 +4,7 @@
  * Plugin Name: Echezona Payments
  * Plugin URI: https://echezona.com
  * Description: Echezona Payment Gateway for WooCommerce
- * Version: 1.1.0
+ * Version: 1.1.4
  * Author: Favour Max-Oti
  * Author URI: https://github.com/kellslte
  * License: GPL-2.0+
@@ -24,8 +24,11 @@ if (!defined('ABSPATH')) {
 // Define plugin constants
 define('ECZP_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ECZP_PLUGIN_URL', plugin_dir_url(__FILE__));
-define('ECZP_VERSION', '1.1.3');
+define('ECZP_VERSION', '1.1.4');
 define('ECZP_MAIN_FILE', __FILE__);
+
+// Load version manager
+require_once ECZP_PLUGIN_DIR . 'includes/class-eczp-version-manager.php';
 
 // Declare HPOS and Blocks compatibility
 add_action('before_woocommerce_init', function () {
