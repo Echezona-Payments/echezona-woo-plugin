@@ -5,7 +5,6 @@ const { getCurrencyFromPriceResponse } = window.wc.blocksCheckout;
 
 // Add error logging
 const logError = (message, error = null) => {
-  console.error("Echezona Payment Error:", message, error);
   // Send to WordPress error log
   if (window.wp && window.wp.data) {
     window.wp.data
@@ -15,7 +14,6 @@ const logError = (message, error = null) => {
 };
 
 try {
-  console.log("Loading Echezona Payment settings...");
   const settings = getSetting("echezona_payment_data", {});
   console.log("Echezona Payment settings:", settings);
 
@@ -57,9 +55,7 @@ try {
     },
   };
 
-  console.log("Registering Echezona Payment method...");
   registerPaymentMethod(EchezonaPaymentMethod);
-  console.log("Echezona Payment method registered successfully");
 } catch (error) {
   logError("Failed to register payment method", error);
 }
