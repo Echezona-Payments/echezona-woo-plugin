@@ -741,7 +741,7 @@ class WC_ECZP_Gateway extends WC_Payment_Gateway_CC
 
         $body = json_decode(wp_remote_retrieve_body($response), true);
 
-        if (isset($body['responseCode']) && $body['responseCode'] === '00' || $body['data']['status'] === 'Successful') {
+        if (isset($body['responseCode']) && $body['responseCode'] === '00' || isset($body['data']['isSuccessful']) && $body['data']['isSuccessful'] === true) {
             // Payment successful
             $order->payment_complete();
             $order->add_order_note(sprintf(__('Payment completed via Echezona. Reference: %s', 'echezona-payments'), $transaction_id));
