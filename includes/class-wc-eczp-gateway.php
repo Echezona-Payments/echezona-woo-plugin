@@ -720,20 +720,12 @@ class WC_ECZP_Gateway extends WC_Payment_Gateway_CC
             wp_die(__('Order not found', 'echezona-payments'));
         }
 
-        //  fetch the payment information
-        $access_code = $order->get_meta('_echezona_access_code');
-        $payment_info_response = wp_remote_get($this->base_url . "/Payments/GetPaymentInfo/" . $access_code);
-        $payment_info_response_body = json_decode(wp_remote_retrieve_body($payment_info_response), true);
-
-        // get the payment validation token
-        $payment_validation_token = $payment_info_response_body['data']['token'];
-
         // extract transaction id from order meta
         $transaction_id = $order->get_meta('_echezona_transaction_id');
 
-        $response = wp_remote_post($this->base_url . '/Payments/VerifyPayment?caller=merchant', array(
+        $response = wp_remote_post($this->base_url . '/Payments/VerifyPayment', array(
             'headers' => array(
-                'Authorization' => 'Bearer ' . $payment_validation_token,
+                'Authorization' => 'Bearer ' . $this->api_key,
                 'Content-Type' => 'application/json',
             ),
             'body' => json_encode([
