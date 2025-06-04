@@ -331,20 +331,19 @@ class WC_ECZP_Gateway extends WC_Payment_Gateway_CC
         }
 
         try {
-            $transaction_id = $this->generate_transaction_id($order);
-            $payment_url = $this->get_payment_url($order);
+            $response = $this->get_payment_url($order);
 
-            if (!$payment_url) {
+            if (!$response["payment_url"]) {
                 throw new Exception(__('Could not generate payment URL', 'echezona-payments'));
             }
 
             // Store transaction ID in order meta
-            $order->update_meta_data('_echezona_transaction_id', $transaction_id);
+            $order->update_meta_data('_echezona_transaction_id', $response["transaction_id"]);
             $order->save();
 
             return array(
                 'result' => 'success',
-                'redirect' => $payment_url
+                'redirect' => $response["payment_url"]
             );
         } catch (Exception $e) {
             $this->log('Payment processing error: ' . $e->getMessage());
@@ -693,7 +692,10 @@ class WC_ECZP_Gateway extends WC_Payment_Gateway_CC
         $order->update_meta_data('_echezona_access_code', $body['data']['accessCode']);
         $order->save();
 
-        return $body['data']['paymentUrl'];
+        return [
+            "payment_url" => $body['data']['paymentUrl'],
+            "transaction_id" => $transaction_id
+        ];
     }
 
     private function get_callback_url($order)
@@ -739,7 +741,7 @@ class WC_ECZP_Gateway extends WC_Payment_Gateway_CC
 
         $body = json_decode(wp_remote_retrieve_body($response), true);
 
-        if (isset($body['responseCode']) && $body['responseCode'] === '00') {
+        if (isset($body['responseCode']) && $body['responseCode'] === '00' || $body['data']['status'] === 'Successful') {
             // Payment successful
             $order->payment_complete();
             $order->add_order_note(sprintf(__('Payment completed via Echezona. Reference: %s', 'echezona-payments'), $transaction_id));
