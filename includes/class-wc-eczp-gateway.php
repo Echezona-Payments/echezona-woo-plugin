@@ -712,14 +712,18 @@ class WC_ECZP_Gateway extends WC_Payment_Gateway_CC
         $responseCode = isset($_GET['responseCode']) ? sanitize_text_field($_GET['responseCode']) : '';
 
         if ($responseCode !== '00') {
-            wp_die(__('Invalid callback parameters', 'echezona-payments'));
+            wc_add_notice(__('Invalid callback parameters', 'echezona-payments'), 'error');
+            wp_redirect(wc_get_checkout_url());
+            exit;
         }
 
-        $order_id = isset($_GET['order_id']) ? sanitize_text_field($_GET['order_id']) : '';;
+        $order_id = isset($_GET['order_id']) ? sanitize_text_field($_GET['order_id']) : '';
         $order = wc_get_order($order_id);
 
         if (!$order) {
-            wp_die(__('Order not found', 'echezona-payments'));
+            wc_add_notice(__('Order not found', 'echezona-payments'), 'error');
+            wp_redirect(wc_get_checkout_url());
+            exit;
         }
 
         // extract transaction id from order meta
@@ -736,7 +740,9 @@ class WC_ECZP_Gateway extends WC_Payment_Gateway_CC
         ));
 
         if (is_wp_error($response)) {
-            wp_die($response->get_error_message());
+            wc_add_notice($response->get_error_message(), 'error');
+            wp_redirect(wc_get_checkout_url());
+            exit;
         }
 
         $body = json_decode(wp_remote_retrieve_body($response), true);
@@ -750,7 +756,13 @@ class WC_ECZP_Gateway extends WC_Payment_Gateway_CC
             exit;
         } else {
             // Payment failed
+            $error_message = isset($body['message']) ? $body['message'] : __('Payment failed. Please try again.', 'echezona-payments');
             $order->update_status('failed', sprintf(__('Payment failed via Echezona. Reference: %s', 'echezona-payments'), $transaction_id));
+
+            // Add error notice
+            wc_add_notice($error_message, 'error');
+
+            // Redirect to checkout
             wp_redirect($order->get_checkout_payment_url());
             exit;
         }
