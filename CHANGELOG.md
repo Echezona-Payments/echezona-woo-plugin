@@ -1,6 +1,11 @@
 # Changelog
 
 
+## [1.1.12] - 2025-06-12
+### Added
+- Automatic version update
+
+
 ## [1.1.11] - 2025-06-05
 ### Added
 - Automatic version update

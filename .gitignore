@@ -1,1 +1,28 @@
-/node_modules
+# Development files
+node_modules/
+.DS_Store
+*.log
+*.map
+*.min.js
+*.min.css
+build/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+
+# IDE files
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
