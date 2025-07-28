@@ -42,7 +42,7 @@ if (empty($matches[1])) {
     die(esc_html(
         /* translators: Error message shown when version number cannot be found in plugin file */
         __('Could not find version number in plugin file.', 'echezona-woo-payments')
-        ) . "\n");
+    ) . "\n");
 }
 
 $current_version = $matches[1];
@@ -74,8 +74,8 @@ $content = preg_replace(
 );
 
 $content = preg_replace(
-    "/define\(\s*'ECZP_VERSION',\s*'[0-9]+\.[0-9]+\.[0-9]+'\s*\);/",
-    "define('ECZP_VERSION', '" . esc_sql($new_version) . "');",
+    "/define\(\s*'ECHEPAY_GATEWAY_FOR_WOOCOMMERCE_VERSION',\s*'[0-9]+\.[0-9]+\.[0-9]+'\s*\);/",
+    "define('ECHEPAY_GATEWAY_FOR_WOOCOMMERCE_VERSION', '" . esc_sql($new_version) . "');",
     $content
 );
 
@@ -111,11 +111,11 @@ if (file_put_contents($plugin_file, $content)) {
         echo esc_html(
             /* translators: Success message shown when changelog is updated */
             __('Changelog updated', 'echezona-woo-payments')
-            ) . "\n";
+        ) . "\n";
     }
 } else {
     die(esc_html(
         /* translators: Error message shown when version update fails */
         __('Failed to update version in plugin file.', 'echezona-woo-payments')
-        ) . "\n");
+    ) . "\n");
 }

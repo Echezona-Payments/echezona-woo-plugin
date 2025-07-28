@@ -1,14 +1,14 @@
 # Translation Files
 
-This directory contains translation files for the Echezona Woo Payments plugin.
+This directory contains translation files for the Echezona Payment Gateway for WooCommerce plugin.
 
 ## Files
 
-- `echezona-woo-payments.pot`: The template file containing all translatable strings. This file is used as a base for creating translations in other languages.
+- `echezona-payment-gateway-for-woocommerce.pot`: The template file containing all translatable strings. This file is used as a base for creating translations in other languages.
 
 ## How to Create Translations
 
-1. Copy the `.pot` file and rename it to match your language code (e.g., `echezona-woo-payments-fr_FR.po` for French)
+1. Copy the `.pot` file and rename it to match your language code (e.g., `echezona-payment-gateway-for-woocommerce-fr_FR.po` for French)
 2. Translate the strings in the `.po` file
 3. Compile the `.po` file to create a `.mo` file using a tool like Poedit or msgfmt
 
@@ -16,14 +16,14 @@ This directory contains translation files for the Echezona Woo Payments plugin.
 
 Use the following format for translation files:
 
-- `echezona-woo-payments-{language-code}.po`
-- `echezona-woo-payments-{language-code}.mo`
+- `echezona-payment-gateway-for-woocommerce-{language-code}.po`
+- `echezona-payment-gateway-for-woocommerce-{language-code}.mo`
 
 Example:
 
-- `echezona-woo-payments-fr_FR.po` (French)
-- `echezona-woo-payments-es_ES.po` (Spanish)
-- `echezona-woo-payments-de_DE.po` (German)
+- `echezona-payment-gateway-for-woocommerce-fr_FR.po` (French)
+- `echezona-payment-gateway-for-woocommerce-es_ES.po` (Spanish)
+- `echezona-payment-gateway-for-woocommerce-de_DE.po` (German)
 
 ## Contributing Translations
 

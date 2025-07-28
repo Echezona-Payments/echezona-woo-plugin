@@ -24,7 +24,7 @@ try {
       "div",
       { className: "echezona-payment-content" },
       React.createElement("img", {
-        src: settings.logo_url || ECZP_PLUGIN_URL + "assets/images/logo.png",
+        src: settings.logo_url || ECHEPAY_GATEWAY_FOR_WOOCOMMERCE_PLUGIN_URL + "assets/images/logo.png",
         alt: "Echezona Payment",
         style: { maxWidth: "100px", marginBottom: "10px" },
       }),
@@ -38,7 +38,7 @@ try {
       "div",
       { className: "echezona-payment-content" },
       React.createElement("img", {
-        src: settings.logo_url || ECZP_PLUGIN_URL + "assets/images/logo.png",
+        src: settings.logo_url || ECHEPAY_GATEWAY_FOR_WOOCOMMERCE_PLUGIN_URL + "assets/images/logo.png",
         alt: "Echezona Payment",
         style: { maxWidth: "100px", marginBottom: "10px" },
       }),

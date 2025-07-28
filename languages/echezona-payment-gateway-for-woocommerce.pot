@@ -1,0 +1,17 @@
+# Copyright (C) 2024 Favour Max-Oti
+# This file is distributed under the same license as the Echezona Payment Gateway for WooCommerce package.
+msgid ""
+msgstr ""
+"Project-Id-Version: Echezona Payment Gateway for WooCommerce 1.1.12\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/echezona-payment-gateway-for-woocommerce\n"
+"POT-Creation-Date: 2024-03-21 12:00:00+00:00\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"PO-Revision-Date: 2024-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+
+#: echezona-payments.php:102
+msgid "Echezona Payment Gateway for WooCommerce requires WooCommerce to be installed and active."
+msgstr "" 

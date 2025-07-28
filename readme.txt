@@ -1,4 +1,4 @@
-=== Echezona Woo Payments ===
+=== Echezona Payment Gateway for WooCommerce ===
 Contributors: kellslte
 Tags: woocommerce, payment gateway, echezona, payment, nigeria
 Requires at least: 5.0
@@ -12,7 +12,7 @@ Accept payments via Echezona Payment Gateway in your WooCommerce store.
 
 == Description ==
 
-Echezona Woo Payments is a WooCommerce payment gateway plugin that allows you to accept payments through the Echezona Payment Gateway. This plugin enables your WooCommerce store to process payments securely and efficiently.
+Echezona Payment Gateway for WooCommerce is a WooCommerce payment gateway plugin that allows you to accept payments through the Echezona Payment Gateway. This plugin enables your WooCommerce store to process payments securely and efficiently.
 
 = Features =
 
@@ -39,7 +39,7 @@ Echezona Woo Payments is a WooCommerce payment gateway plugin that allows you to
 
 == Installation ==
 
-1. Upload the plugin files to the `/wp-content/plugins/echezona-payments` directory, or install the plugin through the WordPress plugins screen directly.
+1. Upload the plugin files to the `/wp-content/plugins/echezona-payment-gateway-for-woocommerce` directory, or install the plugin through the WordPress plugins screen directly.
 2. Activate the plugin through the 'Plugins' screen in WordPress
 3. Use the Settings->WooCommerce->Payments screen to configure the plugin
 4. Enter your Echezona API key in the plugin settings
@@ -76,7 +76,7 @@ Yes, this plugin is compatible with WooCommerce's High-Performance Order Storage
 == Upgrade Notice ==
 
 = 1.1.10 =
-Initial release of the Echezona Payments plugin.
+Initial release of the Echezona Payment Gateway for WooCommerce plugin.
 
 == Privacy Policy ==
 
