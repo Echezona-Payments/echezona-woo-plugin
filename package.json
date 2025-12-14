@@ -1,6 +1,6 @@
 {
-  "name": "echezona-payment-gateway-for-woocommerce",
-  "version": "1.1.8",
+  "name": "echezona-payments",
+  "version": "1.1.13",
   "description": "Echezona Payment Gateway for WooCommerce",
   "main": "build/index.js",
   "scripts": {
@@ -25,5 +25,5 @@
   },
   "author": "Favour Max-Oti <maxotif@gmail.com>",
   "license": "ISC",
-  "repository": "https://github.com/kellslte/echezona-woo-plugin.git"
+  "repository": "https://github.com/Echezona-Payments/echezona-woo-plugin.git"
 }
