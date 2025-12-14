@@ -116,8 +116,8 @@ class WC_ECHEPAY_GATEWAY_FOR_WOOCOMMERCE_Gateway extends WC_Payment_Gateway_CC
     $this->id = 'echezona_payment';
     $this->icon = ECHEPAY_GATEWAY_FOR_WOOCOMMERCE_PLUGIN_URL . 'assets/images/logo.png';
     $this->has_fields = true;
-    $this->method_title = __('Echezona Payment Gateway', 'echezona-payment-gateway-for-woocommerce');
-    $this->method_description = __('Accept payments via Echezona Payment Gateway', 'echezona-payment-gateway-for-woocommerce');
+    $this->method_title = __('Echezona Payment Gateway', 'echezona-payments');
+    $this->method_description = __('Echezona delivers the secure payment infrastructure and powerful tools your business needs to grow with confidence.', 'echezona-payments');
     $this->supports = array(
       'products',
       'refunds',
@@ -252,27 +252,27 @@ class WC_ECHEPAY_GATEWAY_FOR_WOOCOMMERCE_Gateway extends WC_Payment_Gateway_CC
         'default' => '',
         'desc_tip' => true,
       ),
-      'saved_cards' => array(
-        'title' => __('Saved Cards', 'echezona-payments'),
-        'type' => 'checkbox',
-        'label' => __('Enable Payment via Saved Cards', 'echezona-payments'),
-        'default' => 'no',
-        'description' => __('If enabled, users will be able to pay with a saved card during checkout.', 'echezona-payments'),
-      ),
-      'split_payment' => array(
-        'title' => __('Split Payment', 'echezona-payments'),
-        'type' => 'checkbox',
-        'label' => __('Enable Split Payment', 'echezona-payments'),
-        'default' => 'no',
-        'description' => __('If enabled, payments can be split between multiple accounts.', 'echezona-payments'),
-      ),
-      'custom_metadata' => array(
-        'title' => __('Custom Metadata', 'echezona-payments'),
-        'type' => 'checkbox',
-        'label' => __('Enable Custom Metadata', 'echezona-payments'),
-        'default' => 'no',
-        'description' => __('If enabled, additional order information will be sent to Echezona.', 'echezona-payments'),
-      ),
+      // 'saved_cards' => array(
+      //   'title' => __('Saved Cards', 'echezona-payments'),
+      //   'type' => 'checkbox',
+      //   'label' => __('Enable Payment via Saved Cards', 'echezona-payments'),
+      //   'default' => 'no',
+      //   'description' => __('If enabled, users will be able to pay with a saved card during checkout.', 'echezona-payments'),
+      // ),
+      // 'split_payment' => array(
+      //   'title' => __('Split Payment', 'echezona-payments'),
+      //   'type' => 'checkbox',
+      //   'label' => __('Enable Split Payment', 'echezona-payments'),
+      //   'default' => 'no',
+      //   'description' => __('If enabled, payments can be split between multiple accounts.', 'echezona-payments'),
+      // ),
+      // 'custom_metadata' => array(
+      //   'title' => __('Custom Metadata', 'echezona-payments'),
+      //   'type' => 'checkbox',
+      //   'label' => __('Enable Custom Metadata', 'echezona-payments'),
+      //   'default' => 'no',
+      //   'description' => __('If enabled, additional order information will be sent to Echezona.', 'echezona-payments'),
+      // ),
       'autocomplete_order' => array(
         'title' => __('Autocomplete Order', 'echezona-payments'),
         'type' => 'checkbox',

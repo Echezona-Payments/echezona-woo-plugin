@@ -1,15 +1,15 @@
 <?php
 
 /**
- * Plugin Name: Echezona Payment Gateway for WooCommerce
+ * Plugin Name: Echezona Payments
  * Plugin URI: https://echezona.com
  * Description: Echezona Payment Gateway for WooCommerce
- * Version: 1.1.13
- * Author: Favour Max-Oti
- * Author URI: https://github.com/kellslte
+ * Version: 1.1.14
+ * Author: Echezona Digital Gateway Ltd
+ * Author URI: https://www.echezona.com
  * License: GPL-2.0+
  * License URI: http://www.gnu.org/licenses/gpl-2.0.txt
- * Text Domain: echezona-payment-gateway-for-woocommerce
+ * Text Domain: echezona-payments
  * Requires at least: 5.0
  * Requires PHP: 7.4
  * Requires Plugins: woocommerce
@@ -92,7 +92,7 @@ function echepay_gateway_for_woocommerce_woocommerce_missing_notice()
   ?>
   <div class="error">
     <p>
-      <?php esc_html_e('Echezona Payment Gateway for WooCommerce requires WooCommerce to be installed and active.', 'echezona-payment-gateway-for-woocommerce'); ?>
+      <?php esc_html_e('Echezona Payment Gateway for WooCommerce requires WooCommerce to be installed and active.', 'echezona-payments'); ?>
     </p>
   </div>
   <?php
