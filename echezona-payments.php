@@ -26,7 +26,7 @@ if (!defined('ABSPATH')) {
 // Define plugin constants
 define('ECHEPAY_GATEWAY_FOR_WOOCOMMERCE_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ECHEPAY_GATEWAY_FOR_WOOCOMMERCE_PLUGIN_URL', plugin_dir_url(__FILE__));
-define('ECHEPAY_GATEWAY_FOR_WOOCOMMERCE_VERSION', '1.1.13');
+define('ECHEPAY_GATEWAY_FOR_WOOCOMMERCE_VERSION', '1.1.14');
 define('ECHEPAY_GATEWAY_FOR_WOOCOMMERCE_MAIN_FILE', __FILE__);
 
 // Load version manager

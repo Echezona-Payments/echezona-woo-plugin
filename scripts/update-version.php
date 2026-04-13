@@ -1,5 +1,9 @@
 <?php
 
+if ( ! defined( 'ABSPATH' ) ) {
+  exit; // Exit if accessed directly.
+}
+
 /**
  * Version Update Script
  * 
@@ -10,14 +14,14 @@
 if (php_sapi_name() !== 'cli') {
     die(esc_html(
         /* translators: Error message shown when script is not run from command line */
-        __('This script can only be run from the command line.', 'echezona-woo-payments')
+        __('This script can only be run from the command line.', 'echezona-payments')
     ));
 }
 
 if ($argc !== 2 || !in_array($argv[1], ['major', 'minor', 'patch'])) {
     die(esc_html(sprintf(
         /* translators: Command line usage instructions for the version update script. %s represents the command name */
-        __('Usage: %s [major|minor|patch]', 'echezona-woo-payments'),
+        __('Usage: %s [major|minor|patch]', 'echezona-payments'),
         'php update-version.php'
     )) . "\n");
 }
@@ -28,7 +32,7 @@ $plugin_file = __DIR__ . '/../echezona-payments.php';
 if (!file_exists($plugin_file)) {
     die(esc_html(sprintf(
         /* translators: %s: The full path to the plugin file that could not be found */
-        __('Plugin file not found: %s', 'echezona-woo-payments'),
+        __('Plugin file not found: %s', 'echezona-payments'),
         $plugin_file
     )) . "\n");
 }
@@ -41,7 +45,7 @@ preg_match("/Version:\s*([0-9]+\.[0-9]+\.[0-9]+)/", $content, $matches);
 if (empty($matches[1])) {
     die(esc_html(
         /* translators: Error message shown when version number cannot be found in plugin file */
-        __('Could not find version number in plugin file.', 'echezona-woo-payments')
+        __('Could not find version number in plugin file.', 'echezona-payments')
     ) . "\n");
 }
 
@@ -83,7 +87,7 @@ $content = preg_replace(
 if (file_put_contents($plugin_file, $content)) {
     echo esc_html(sprintf(
         /* translators: 1: The current version number before update, 2: The new version number after update */
-        __('Version updated from %1$s to %2$s', 'echezona-woo-payments'),
+        __('Version updated from %1$s to %2$s', 'echezona-payments'),
         $current_version,
         $new_version
     )) . "\n";
@@ -95,7 +99,7 @@ if (file_put_contents($plugin_file, $content)) {
         $date = gmdate('Y-m-d');
         /* translators: 1: The new version number, 2: The current date in YYYY-MM-DD format */
         $new_entry = sprintf(
-            "\n## [%1$s] - %2$s\n### Added\n- " . esc_html(__('Automatic version update', 'echezona-woo-payments')) . "\n\n",
+            "\n## [%1$s] - %2$s\n### Added\n- " . esc_html(__('Automatic version update', 'echezona-payments')) . "\n\n",
             esc_sql($new_version),
             esc_sql($date)
         );
@@ -110,12 +114,12 @@ if (file_put_contents($plugin_file, $content)) {
         file_put_contents($changelog_file, $changelog);
         echo esc_html(
             /* translators: Success message shown when changelog is updated */
-            __('Changelog updated', 'echezona-woo-payments')
+            __('Changelog updated', 'echezona-payments')
         ) . "\n";
     }
 } else {
     die(esc_html(
         /* translators: Error message shown when version update fails */
-        __('Failed to update version in plugin file.', 'echezona-woo-payments')
+        __('Failed to update version in plugin file.', 'echezona-payments')
     ) . "\n");
 }
