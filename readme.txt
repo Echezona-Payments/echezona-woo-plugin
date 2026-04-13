@@ -1,8 +1,8 @@
-=== Echezona Payment Gateway for WooCommerce ===
+=== Echezona Payments ===
 Contributors: kellslte, therealemino
 Tags: woocommerce, payment gateway, echezona, payment, nigeria
 Requires at least: 5.0
-Tested up to: 6.8
+Tested up to: 6.9
 Stable tag: 1.1.14
 Requires PHP: 7.4
 License: GPLv2 or later
