@@ -1,5 +1,5 @@
 === Echezona Payments ===
-Contributors: kellslte, therealemino
+Contributors: kellslte, therealemino, echezonapayments
 Tags: woocommerce, payment gateway, echezona, payment, nigeria
 Requires at least: 5.0
 Tested up to: 6.9
@@ -61,6 +61,16 @@ Yes, this plugin is fully compatible with WooCommerce Blocks and the new checkou
 = Does this plugin support High-Performance Order Storage (HPOS)? =
 
 Yes, this plugin is compatible with WooCommerce's High-Performance Order Storage feature.
+
+== External services ==
+
+This plugin relies on the Echezona Payment Gateway API to process payments securely.
+
+When a customer checks out, the plugin sends payment requests and necessary customer data (such as order amount, customer name, email, and billing address) to the Echezona API at `api.echezona.com`. This is necessary to initiate and confirm payments. The plugin also receives webhooks from this service to update order statuses.
+
+This service is provided by Echezona Digital Gateway Ltd.
+* [Terms of Service](https://www.echezona.com/terms)
+* [Privacy Policy](https://www.echezona.com/policy)
 
 == Screenshots ==
 

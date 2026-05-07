@@ -18,13 +18,13 @@ use Automattic\WooCommerce\StoreApi\Payments\PaymentContext;
 use Automattic\WooCommerce\StoreApi\Payments\PaymentResult;
 
 /**
- * WC_ECHEPAY_GATEWAY_FOR_WOOCOMMERCE_Blocks_Support Class
+ * Echepay_Gateway_For_Woocommerce_Blocks_Support Class
  *
  * Extends the WooCommerce Blocks payment method type to provide Echezona payment support.
  *
  * @since 1.0.0
  */
-final class WC_ECHEPAY_GATEWAY_FOR_WOOCOMMERCE_Blocks_Support extends AbstractPaymentMethodType
+final class Echepay_Gateway_For_Woocommerce_Blocks_Support extends AbstractPaymentMethodType
 {
   /**
    * Payment method name/id/slug.

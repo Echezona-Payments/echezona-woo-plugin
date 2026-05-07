@@ -16,14 +16,14 @@ if (!class_exists('WC_Payment_Gateway')) {
 }
 
 /**
- * WC_ECHEPAY_GATEWAY_FOR_WOOCOMMERCE_Gateway Class
+ * Echepay_Gateway_For_Woocommerce_Gateway Class
  *
  * Handles the Echezona payment gateway integration with WooCommerce.
  * Extends WC_Payment_Gateway_CC to provide credit card payment functionality.
  *
  * @since 1.0.0
  */
-class WC_ECHEPAY_GATEWAY_FOR_WOOCOMMERCE_Gateway extends WC_Payment_Gateway_CC
+class Echepay_Gateway_For_Woocommerce_Gateway extends WC_Payment_Gateway_CC
 {
   /**
    * Supported currencies
@@ -289,7 +289,7 @@ class WC_ECHEPAY_GATEWAY_FOR_WOOCOMMERCE_Gateway extends WC_Payment_Gateway_CC
       $tokens = WC_Payment_Tokens::get_customer_tokens(get_current_user_id(), $this->id);
       if (!empty($tokens)) {
         echo '<div class="echezona-saved-cards">';
-        echo '<h3>' . __('Saved Cards', 'echezona-payments') . '</h3>';
+        echo '<h3>' . esc_html__('Saved Cards', 'echezona-payments') . '</h3>';
         foreach ($tokens as $token) {
           echo '<div class="echezona-saved-card">';
           echo '<input type="radio" name="echezona_token" value="' . esc_attr($token->get_id()) . '" />';
@@ -298,7 +298,7 @@ class WC_ECHEPAY_GATEWAY_FOR_WOOCOMMERCE_Gateway extends WC_Payment_Gateway_CC
         }
         echo '<div class="echezona-saved-card">';
         echo '<input type="radio" name="echezona_token" value="new" checked />';
-        echo '<label>' . __('Use a new card', 'echezona-payments') . '</label>';
+        echo '<label>' . esc_html__('Use a new card', 'echezona-payments') . '</label>';
         echo '</div>';
         echo '</div>';
       }
@@ -335,8 +335,8 @@ class WC_ECHEPAY_GATEWAY_FOR_WOOCOMMERCE_Gateway extends WC_Payment_Gateway_CC
       echo '<div class="error">
     <p>' .
         sprintf(
-          __('Echezona Payment Gateway is in test mode. Click %s to disable it when you want to start accepting live payments.', 'echezona-payments'),
-          '<a href="' . esc_url(admin_url('admin.php?page=wc-settings&tab=checkout&section=echezona_payment')) . '">' . __('here', 'echezona-payments') . '</a>'
+          esc_html__('Echezona Payment Gateway is in test mode. Click %s to disable it when you want to start accepting live payments.', 'echezona-payments'),
+          '<a href="' . esc_url(admin_url('admin.php?page=wc-settings&tab=checkout&section=echezona_payment')) . '">' . esc_html__('here', 'echezona-payments') . '</a>'
         ) .
         '</p>
 </div>';
@@ -516,6 +516,8 @@ class WC_ECHEPAY_GATEWAY_FOR_WOOCOMMERCE_Gateway extends WC_Payment_Gateway_CC
       status_header(400);
       exit('Invalid payload');
     }
+
+    $data = wc_clean($data);
 
     $this->log('Webhook received: ' . wp_json_encode($data));
 
@@ -935,7 +937,7 @@ class WC_ECHEPAY_GATEWAY_FOR_WOOCOMMERCE_Gateway extends WC_Payment_Gateway_CC
   public function receipt_page($order_id)
   {
     $order = wc_get_order($order_id);
-    echo '<p>' . __('Thank you for your order. Please click the button below to pay with Echezona.', 'echezona-payments') . '</p>';
-    echo '<p><a class="button" href="' . esc_url($order->get_checkout_payment_url(true)) . '">' . __('Pay Now', 'echezona-payments') . '</a></p>';
+    echo '<p>' . esc_html__('Thank you for your order. Please click the button below to pay with Echezona.', 'echezona-payments') . '</p>';
+    echo '<p><a class="button" href="' . esc_url($order->get_checkout_payment_url(true)) . '">' . esc_html__('Pay Now', 'echezona-payments') . '</a></p>';
   }
 }

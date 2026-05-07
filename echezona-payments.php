@@ -63,7 +63,7 @@ function echepay_gateway_for_woocommerce_init()
       'woocommerce_blocks_payment_method_type_registration',
       function (Automattic\WooCommerce\Blocks\Payments\PaymentMethodRegistry $payment_method_registry) {
         $payment_method_registry->register(
-          new WC_ECHEPAY_GATEWAY_FOR_WOOCOMMERCE_Blocks_Support()
+          new Echepay_Gateway_For_Woocommerce_Blocks_Support()
         );
       }
     );
@@ -79,7 +79,7 @@ add_action('plugins_loaded', 'echepay_gateway_for_woocommerce_init', 20);
  */
 function echepay_gateway_for_woocommerce_add_gateway($methods)
 {
-  $methods[] = 'WC_ECHEPAY_GATEWAY_FOR_WOOCOMMERCE_Gateway';
+  $methods[] = 'Echepay_Gateway_For_Woocommerce_Gateway';
   return $methods;
 }
 add_filter('woocommerce_payment_gateways', 'echepay_gateway_for_woocommerce_add_gateway');
