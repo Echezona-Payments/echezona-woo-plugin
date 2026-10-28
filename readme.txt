@@ -3,7 +3,7 @@ Contributors: kellslte, therealemino, echezonapayments
 Tags: woocommerce, payment gateway, echezona, payment, nigeria
 Requires at least: 5.0
 Tested up to: 6.9
-Stable tag: 1.1.14
+Stable tag: 1.1.15
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -79,6 +79,14 @@ This service is provided by Echezona Digital Gateway Ltd.
 3. Payment processing screen
 
 == Changelog ==
+
+= 1.1.15 =
+* Fix: payment callback now verifies the transaction with Echezona, fixing customers being returned to checkout after a successful payment
+* Fix: failed or pending payments are no longer marked as paid
+* Fix: Autocomplete Order now applies to callback-confirmed payments
+* Fix: test mode now initializes transactions as test (isLive false)
+* New: optional Custom Callback URL / Route setting
+* New: webhook setup guidance on the settings page
 
 = 1.1.10 =
 * Initial release

@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.1.15] - 2026-10-27
+
+### Fixed
+
+- Payment callback now verifies the transaction with Echezona instead of relying on a `responseCode` query parameter the checkout does not send, so customers are no longer sent back to checkout with "Invalid callback parameters" after a successful payment
+- Failed or pending payments are no longer marked as paid (the verify response's top-level `responseCode` only means the lookup succeeded; `data.isSuccessful` is now used)
+- "Autocomplete Order" setting now applies to payments confirmed via the callback
+
+- Transactions are now initialized with `isLive` (false in test mode, true otherwise). The previous `mode` field was ignored by the API, so test mode transactions were processed as live
+
+### Added
+
+- Optional "Custom Callback URL / Route" setting to redirect customers to a custom page after payment verification
+- Order key on the callback URL for validation
+- Webhook setup guidance on the settings page
+
 ## [1.1.12] - 2025-06-12
 
 ### Added

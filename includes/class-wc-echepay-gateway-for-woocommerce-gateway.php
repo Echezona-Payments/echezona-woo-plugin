@@ -280,6 +280,23 @@ class Echepay_Gateway_For_Woocommerce_Gateway extends WC_Payment_Gateway_CC
         'default' => 'yes',
         'description' => __('If enabled, the order will be marked as completed after successful payment.', 'echezona-payments'),
       ),
+      'callback_url' => array(
+        'title' => __('Custom Callback URL / Route', 'echezona-payments'),
+        'type' => 'text',
+        'description' => __('Optional. Leave this field empty to use the default WooCommerce order received / payment pages. Only set a custom callback URL if you have set up a page to handle it. Enter a full URL (e.g. https://yourstore.com/payment-complete) or a route on this site (e.g. /payment-complete). After the payment is verified and the order is updated, the customer is redirected here with order_id, order_key, status (success, failed, pending or cancelled) and transactionId appended, and your page decides what to show them.', 'echezona-payments'),
+        'default' => '',
+        'placeholder' => '/payment-complete',
+      ),
+      'webhook_info' => array(
+        'title' => __('Webhooks', 'echezona-payments'),
+        'type' => 'title',
+        'description' => sprintf(
+          /* translators: 1: webhook endpoint URL, 2: documentation URL */
+          __('Webhooks are configured on your Echezona Dashboard under <strong>Settings &gt; API Keys &amp; Webhooks</strong>. Your store\'s webhook endpoint is <code>%1$s</code>. See the <a href="%2$s" target="_blank" rel="noopener noreferrer">webhook documentation</a> for the payload format.', 'echezona-payments'),
+          esc_url(add_query_arg('wc-api', 'echezona_payment_webhook', home_url('/'))),
+          esc_url('https://docs.echezona.com/docs/guide/integrations/webhooks')
+        ),
+      ),
     );
   }
 
@@ -732,7 +749,7 @@ class Echepay_Gateway_For_Woocommerce_Gateway extends WC_Payment_Gateway_CC
       'lastName' => $order->get_billing_last_name(),
       'callbackUrl' => $this->get_callback_url($order),
       'transactionId' => $transaction_id,
-      'mode' => $this->testmode ? 'Test' : 'Live',
+      'isLive' => !$this->testmode,
       'metadata' => array(
         array(
           'name' => 'Order Id',
@@ -833,43 +850,93 @@ class Echepay_Gateway_For_Woocommerce_Gateway extends WC_Payment_Gateway_CC
     return add_query_arg(
       array(
         'wc-api' => 'echezona_payment_callback',
-        'order_id' => $order->get_id()
+        'order_id' => $order->get_id(),
+        'key' => $order->get_order_key()
       ),
       home_url('/')
     );
   }
 
   /**
-   * Check Echezona payment response.
+   * Get the URL to send the customer to after the callback has been processed.
+   *
+   * Uses the merchant's custom callback URL/route when set, otherwise the default.
+   *
+   * @param WC_Order $order   Order object.
+   * @param string   $status  Payment status: success, failed, pending or cancelled.
+   * @param string   $default Default WooCommerce URL for this status.
+   * @return string
+   */
+  private function get_redirect_url($order, $status, $default)
+  {
+    $custom_url = trim((string) $this->callback_url);
+
+    if (empty($custom_url)) {
+      return $default;
+    }
+
+    // Anything that isn't a full URL is treated as a route on this site
+    if (!preg_match('#^https?://#i', $custom_url)) {
+      $custom_url = home_url('/' . ltrim($custom_url, '/'));
+    }
+
+    $custom_url = esc_url_raw($custom_url);
+
+    if (empty($custom_url)) {
+      $this->log('Invalid custom callback URL, using default: ' . $this->callback_url);
+      return $default;
+    }
+
+    // Allow wp_safe_redirect() to send the customer to an external custom callback host
+    $host = wp_parse_url($custom_url, PHP_URL_HOST);
+    if ($host) {
+      add_filter('allowed_redirect_hosts', function ($hosts) use ($host) {
+        $hosts[] = $host;
+        return $hosts;
+      });
+    }
+
+    return add_query_arg(
+      array(
+        'order_id' => $order->get_id(),
+        'order_key' => $order->get_order_key(),
+        'status' => $status,
+        'transactionId' => (string) $order->get_meta('_echezona_transaction_id'),
+      ),
+      $custom_url
+    );
+  }
+
+  /**
+   * Handle the customer returning from the Echezona checkout.
+   *
+   * The checkout appends isSuccess/success, transactionId, reference, amount and
+   * message to the callback URL. These are only used for logging - the payment
+   * outcome is always confirmed server-side with Payments/VerifyPayment.
    */
   public function check_echepay_gateway_for_woocommerce_response()
   {
-    // Verify nonce for AJAX requests
-    if (wp_doing_ajax() && !check_ajax_referer('echezona-payment-nonce', 'nonce', false)) {
-      wp_send_json_error(__('Invalid security token', 'echezona-payments'));
-      exit;
-    }
-
-    $reference = isset($_GET['orderReference']) ? sanitize_text_field($_GET['orderReference']) : '';
-    $response_code = isset($_GET['responseCode']) ? sanitize_text_field($_GET['responseCode']) : '';
-
-    if ($response_code !== '00') {
-      wc_add_notice(__('Invalid callback parameters', 'echezona-payments'), 'error');
-      wp_safe_redirect(wc_get_checkout_url());
-      exit;
-    }
-
     $order_id = isset($_GET['order_id']) ? absint($_GET['order_id']) : 0;
-    $order = wc_get_order($order_id);
+    $order_key = isset($_GET['key']) ? wc_clean(wp_unslash($_GET['key'])) : '';
+    $order = $order_id ? wc_get_order($order_id) : false;
 
-    if (!$order) {
+    // Callback URLs generated before the order key was added have no key, so only reject a mismatch
+    if (!$order || ($order_key && !hash_equals($order->get_order_key(), $order_key))) {
       wc_add_notice(__('Order not found', 'echezona-payments'), 'error');
       wp_safe_redirect(wc_get_checkout_url());
       exit;
     }
 
-    // Extract transaction ID from order meta
+    $this->log('Callback received for order ' . $order_id . ': ' . wp_json_encode(wc_clean(wp_unslash($_GET))));
+
+    if ($order->is_paid()) {
+      wp_safe_redirect($this->get_redirect_url($order, 'success', $this->get_return_url($order)));
+      exit;
+    }
+
     $transaction_id = $order->get_meta('_echezona_transaction_id');
+    $cancelled = isset($_GET['status']) && 'error' === sanitize_text_field(wp_unslash($_GET['status']));
+    $callback_message = isset($_GET['message']) ? sanitize_text_field(wp_unslash($_GET['message'])) : '';
 
     try {
       $response = wp_remote_post(
@@ -891,45 +958,85 @@ class Echepay_Gateway_For_Woocommerce_Gateway extends WC_Payment_Gateway_CC
       }
 
       $body = json_decode(wp_remote_retrieve_body($response), true);
+      $this->log('VerifyPayment response for order ' . $order_id . ': ' . wp_json_encode($body));
 
-      if (
-        (isset($body['responseCode']) && $body['responseCode'] === '00') ||
-        (isset($body['data']['isSuccessful']) && $body['data']['isSuccessful'] === true)
-      ) {
+      // The top-level responseCode only means the lookup succeeded, the payment result is in data
+      $data = isset($body['data']) && is_array($body['data']) ? $body['data'] : array();
+      $status = isset($data['status']) ? $data['status'] : '';
+      $gateway_message = isset($data['gatewayResponse']) ? sanitize_text_field($data['gatewayResponse']) : '';
+
+      if ((isset($data['isSuccessful']) && true === $data['isSuccessful']) || 'Successful' === $status) {
         // Payment successful
-        $order->payment_complete();
+        $reference = isset($data['paymentReference']) ? sanitize_text_field($data['paymentReference']) : $transaction_id;
+        $order->payment_complete($reference);
         $order->add_order_note(
           sprintf(
-            __('Payment completed via Echezona. Reference: %s', 'echezona-payments'),
-            $transaction_id
+            __('Payment completed via Echezona. Transaction ID: %1$s. Reference: %2$s', 'echezona-payments'),
+            $transaction_id,
+            $reference
           )
         );
 
-        if ($this->autocomplete_order === 'yes') {
+        if ($this->autocomplete_order) {
           $order->update_status('completed');
         }
 
-        wp_safe_redirect($this->get_return_url($order));
+        wp_safe_redirect($this->get_redirect_url($order, 'success', $this->get_return_url($order)));
         exit;
-      } else {
-        // Payment failed
-        $error_message = isset($body['message']) ? sanitize_text_field($body['message']) : __('Payment failed. Please try again.', 'echezona-payments');
-        $order->update_status(
-          'failed',
+      }
+
+      if ('Pending' === $status && $cancelled) {
+        // Customer closed the checkout before the payment completed, leave the order unpaid so they can retry
+        wc_add_notice(__('Payment was cancelled. Please try again.', 'echezona-payments'), 'error');
+        wp_safe_redirect($this->get_redirect_url($order, 'cancelled', $order->get_checkout_payment_url()));
+        exit;
+      }
+
+      if ('Pending' === $status) {
+        // Payment still processing, leave the order as is
+        $order->add_order_note(
           sprintf(
-            __('Payment failed via Echezona. Reference: %s', 'echezona-payments'),
-            $transaction_id
+            __('Echezona payment is pending confirmation. Transaction ID: %1$s. %2$s', 'echezona-payments'),
+            $transaction_id,
+            $gateway_message
           )
         );
 
-        wc_add_notice($error_message, 'error');
-        wp_safe_redirect($order->get_checkout_payment_url());
+        wc_add_notice(__('Your payment is being confirmed. Please do not make another payment, your order will be updated once it is confirmed.', 'echezona-payments'), 'notice');
+        wp_safe_redirect($this->get_redirect_url($order, 'pending', $this->get_return_url($order)));
         exit;
       }
+
+      // Payment failed or cancelled
+      if ($cancelled) {
+        $error_message = __('Payment was cancelled. Please try again.', 'echezona-payments');
+      } elseif ($gateway_message) {
+        $error_message = $gateway_message;
+      } elseif ($callback_message) {
+        $error_message = $callback_message;
+      } else {
+        $error_message = __('Payment failed. Please try again.', 'echezona-payments');
+      }
+
+      if ($order->needs_payment()) {
+        $order->update_status(
+          'failed',
+          sprintf(
+            $cancelled
+              ? __('Payment cancelled by customer on Echezona checkout. Transaction ID: %s', 'echezona-payments')
+              : __('Payment failed via Echezona. Transaction ID: %s', 'echezona-payments'),
+            $transaction_id
+          )
+        );
+      }
+
+      wc_add_notice($error_message, 'error');
+      wp_safe_redirect($this->get_redirect_url($order, $cancelled ? 'cancelled' : 'failed', $order->get_checkout_payment_url()));
+      exit;
     } catch (Exception $e) {
       $this->log('Payment verification error: ' . $e->getMessage());
-      wc_add_notice($e->getMessage(), 'error');
-      wp_safe_redirect(wc_get_checkout_url());
+      wc_add_notice(__('We could not confirm your payment right now. If you were debited, your order will be updated once the payment is confirmed.', 'echezona-payments'), 'error');
+      wp_safe_redirect($this->get_redirect_url($order, 'pending', $order->get_checkout_payment_url()));
       exit;
     }
   }
