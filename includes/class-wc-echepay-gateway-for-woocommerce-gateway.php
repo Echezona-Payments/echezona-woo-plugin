@@ -302,6 +302,11 @@ class Echepay_Gateway_For_Woocommerce_Gateway extends WC_Payment_Gateway_CC
 
   public function payment_fields()
   {
+    $description = $this->get_description();
+    if ($description) {
+      echo wpautop(wptexturize(wp_kses_post($description)));
+    }
+
     if ($this->saved_cards && is_user_logged_in()) {
       $tokens = WC_Payment_Tokens::get_customer_tokens(get_current_user_id(), $this->id);
       if (!empty($tokens)) {
